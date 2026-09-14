@@ -590,16 +590,26 @@ DATABASE_URL=sqlite:///./rakshaai.db
 
 **ForgeAI Hackathon**
 
-RakshaAI follows the ForgeAI methodology:
+RakshaAI asks a more important question:
 
-**Build** a working system → **Observe** its real behavior with PRISM → **Discover** a genuine weakness → **Improve** with a targeted engineering change → **Prove** the improvement with the same evaluation.
+> **"Can an AI agent investigate fraud safely when the information it receives may itself be malicious?"**
 
 ---
 
-## 20. Disclaimer
+# Future Scope
 
-RakshaAI is a **hackathon prototype** using simulated transactions and synthetic data. It is intended to demonstrate AI-agent security and evaluation concepts within a UPI-inspired context.
+* Integration with real-time UPI transaction streams
+* Advanced behavioral anomaly detection
+* Graph-based fraud detection
+* Multi-agent fraud investigation
+* Real-time prompt injection detection
+* Human-in-the-loop investigation dashboard
+* Explainable AI-based fraud reports
+* Continuous security evaluation using adversarial test cases
+* Deployment using cloud infrastructure
 
-RakshaAI does not process real financial transactions, connect to live banking infrastructure, or make actual fraud decisions. It is not a replacement for banks, NPCI, CIBIL, or any existing fraud-detection system.
+---
 
-All metrics, evaluations, and results reported by this project come from runs against synthetic data in a simulated environment.
+# Disclaimer
+
+This project is intended as a research and educational prototype. It uses synthetic transaction data and does not connect to real banking or UPI systems.
