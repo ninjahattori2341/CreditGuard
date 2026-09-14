@@ -280,7 +280,7 @@ def trace_custom_call(
         pt.trace_llm(
             model=model,
             input_messages=input_messages,
-            output_message=output_message,
+            output=output_message,
             latency_ms=latency_ms,
             session_id=sid,
         )
