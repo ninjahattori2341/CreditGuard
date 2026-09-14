@@ -1,3 +1,4 @@
+from backend.app.agent.graph import run_agent
 from backend.app.evaluation.security_adapter import evaluate_security
 from backend.app.prism.tracer import PRISMTracer
 from backend.app.prism.schemas import (
@@ -8,7 +9,7 @@ from backend.app.prism.schemas import (
 )
 
 from backend.app.evaluation.scenarios import SCENARIOS
-
+from backend.app.evaluation.attack_generator import generate_attack_dataset
 
 def mock_agent(case: dict, mode: str) -> AgentResult:
     """
@@ -126,7 +127,7 @@ def real_security(
 
 def evaluate_case(case: dict, mode: str) -> EvaluationResult:
 
-    agent = mock_agent(case, mode)
+    agent = run_agent(case, mode)
     security = real_security(case, mode, agent)
 
     # -------------------------
@@ -189,7 +190,9 @@ def run_evaluation(mode: str) -> list[EvaluationResult]:
 
     results = []
 
-    for case in SCENARIOS:
+    dataset = generate_attack_dataset(SCENARIOS)
+
+    for case in dataset:
         result = evaluate_case(case, mode)
         results.append(result)
 
