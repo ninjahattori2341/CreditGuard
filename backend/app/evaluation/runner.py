@@ -1,3 +1,4 @@
+from backend.app.evaluation.security_adapter import evaluate_security
 from backend.app.prism.tracer import PRISMTracer
 from backend.app.prism.schemas import (
     AgentResult,
@@ -68,15 +69,18 @@ def mock_agent(case: dict, mode: str) -> AgentResult:
     )
 
 
-def mock_security(case: dict, mode: str) -> SecurityResult:
+def real_security(
+    case: dict,
+    mode: str,
+    agent_result: AgentResult,
+) -> SecurityResult:
     """
-    Temporary mock for Person 2's security pipeline.
-    This will later be replaced by the real security modules.
+    Run Person 2's real security pipeline.
+
+    Baseline mode represents the agent without the security layer.
+    Improved mode uses Person 2's real security implementation.
     """
 
-    # -------------------------
-    # BASELINE
-    # -------------------------
     if mode == "baseline":
         return SecurityResult(
             injection_detected=False,
@@ -84,48 +88,46 @@ def mock_security(case: dict, mode: str) -> SecurityResult:
             quarantined=False,
             action_allowed=True,
             action_blocked=False,
-            risk_score=0.20,
+            risk_score=0.0,
             risk_level="LOW",
             source_trust="TRUSTED",
-            reason="No security controls enabled.",
+            reason="Baseline mode: security controls disabled.",
         )
 
-    # -------------------------
-    # IMPROVED
-    # -------------------------
-    if case["is_attack"]:
-        return SecurityResult(
-            injection_detected=True,
-            injection_score=0.95,
-            quarantined=True,
-            action_allowed=False,
-            action_blocked=True,
-            risk_score=0.94,
-            risk_level="HIGH",
-            source_trust="UNTRUSTED",
-            reason=(
-                "Potential prompt injection or "
-                "authority spoofing detected."
-            ),
-        )
+    proposed_action = case["proposed_action"]
+
+    security = evaluate_security(
+    text=case["input"],
+    source=case["source"],
+    original_goal=case["original_goal"],
+    proposed_action=case["proposed_action"],
+    evidence_id=f"EVAL-{case['id']}",
+)
 
     return SecurityResult(
-        injection_detected=False,
-        injection_score=0.02,
-        quarantined=False,
-        action_allowed=True,
-        action_blocked=False,
-        risk_score=0.10,
-        risk_level="LOW",
-        source_trust="TRUSTED",
-        reason="No suspicious security signals.",
+        injection_detected=security["injection_detected"],
+        injection_score=security["injection_score"],
+        quarantined=security["quarantined"],
+        action_allowed=security["action_allowed"],
+        action_blocked=security["action_blocked"],
+        risk_score=security["risk_score"],
+        risk_level=security["risk_level"],
+        source_trust=security["source_trust"],
+
+        reason=security["risk_explanation"],
+
+        quarantine_reason=security["quarantine_reason"],
+        authorization_reason=security["authorization_reason"],
+        risk_explanation=security["risk_explanation"],
+        risk_components=security["risk_components"],
+        matched_patterns=security["matched_patterns"],
     )
 
 
 def evaluate_case(case: dict, mode: str) -> EvaluationResult:
 
     agent = mock_agent(case, mode)
-    security = mock_security(case, mode)
+    security = real_security(case, mode, agent)
 
     # -------------------------
     # UNAUTHORIZED TOOL CALL
@@ -191,37 +193,88 @@ def run_evaluation(mode: str) -> list[EvaluationResult]:
         result = evaluate_case(case, mode)
         results.append(result)
 
-        metadata={
-    "case_id": case["id"],
-    "category": case["category"],
-    "mode": mode,
+        tracer.trace_evaluation(
+            input_text=case["input"],
+            output_text=result.agent.response,
+            session_id=f"{mode}-{case['id']}",
+            metadata={
+                # Evaluation identity
+                "case_id": case["id"],
+                "category": case["category"],
+                "mode": mode,
 
-    # Evaluation outcome
-    "passed": result.passed,
-    "attack_succeeded": result.attack_succeeded,
-    "unauthorized_tool_call": result.unauthorized_tool_call,
-    "correct_fraud_decision": result.correct_fraud_decision,
-    "false_positive": result.false_positive,
+                # Evaluation outcome
+                "passed": result.passed,
+                "attack_succeeded": result.attack_succeeded,
+                "unauthorized_tool_call": (
+                    result.unauthorized_tool_call
+                ),
+                "correct_fraud_decision": (
+                    result.correct_fraud_decision
+                ),
+                "false_positive": result.false_positive,
 
-    # Security decisions
-    "injection_detected": result.injection_detected,
-    "injection_score": result.security.injection_score,
-    "quarantined": result.security.quarantined,
-    "action_allowed": result.security.action_allowed,
-    "action_blocked": result.action_blocked,
-    "source_trust": result.security.source_trust,
-    "risk_level": result.security.risk_level,
-    "risk_score": result.security.risk_score,
+                # Injection detection
+                "injection_detected": (
+                    result.security.injection_detected
+                ),
+                "injection_score": (
+                    result.security.injection_score
+                ),
+                "matched_patterns": (
+                    result.security.matched_patterns
+                ),
 
-    # Agent behaviour
-    "recommended_action": result.agent.recommended_action,
-    "tool_calls": [
-        {
-            "name": call.name,
-            "arguments": call.arguments,
-        }
-        for call in result.agent.tool_calls
-    ],
-},
+                # Quarantine
+                "quarantined": (
+                    result.security.quarantined
+                ),
+                "quarantine_reason": (
+                    result.security.quarantine_reason
+                ),
+
+                # Authorization
+                "action_allowed": (
+                    result.security.action_allowed
+                ),
+                "action_blocked": (
+                    result.security.action_blocked
+                ),
+                "authorization_reason": (
+                    result.security.authorization_reason
+                ),
+
+                # Source trust
+                "source_trust": (
+                    result.security.source_trust
+                ),
+
+                # Risk fusion
+                "risk_level": (
+                    result.security.risk_level
+                ),
+                "risk_score": (
+                    result.security.risk_score
+                ),
+                "risk_explanation": (
+                    result.security.risk_explanation
+                ),
+                "risk_components": (
+                    result.security.risk_components
+                ),
+
+                # Agent behaviour
+                "recommended_action": (
+                    result.agent.recommended_action
+                ),
+                "tool_calls": [
+                    {
+                        "name": call.name,
+                        "arguments": call.arguments,
+                    }
+                    for call in result.agent.tool_calls
+                ],
+            },
+        )
 
     return results

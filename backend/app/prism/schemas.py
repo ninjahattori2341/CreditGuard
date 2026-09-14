@@ -28,6 +28,11 @@ class SecurityResult:
     risk_level: str = "LOW"
     source_trust: str = "TRUSTED"
     reason: str = ""
+    quarantine_reason: str = ""
+    authorization_reason: str = ""
+    risk_explanation: str = ""
+    risk_components: dict[str, float] = field(default_factory=dict)
+    matched_patterns: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -45,3 +50,4 @@ class EvaluationResult:
     action_blocked: bool
     passed: bool
     reason: str = ""
+    
